@@ -3,6 +3,7 @@
 #include <psapi.h>
 #include <libgen.h>
 #include <io.h>
+#include <stdint-gcc.h>
 
 unsigned long long count = 0;
 FILE *f;
@@ -25,18 +26,26 @@ LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
                 printf("[err] OpenProcess Error: %lu\n", GetLastError());
             }
 
-            TCHAR executablePath[128];
-            DWORD fail = GetModuleFileNameEx(process, NULL, executablePath, 128);
+            TCHAR executablePath[256];
+            DWORD fail = GetModuleFileNameEx(process, NULL, executablePath, 256);
             CloseHandle(process);
             if (fail == 0) {
                 printf("[err] GetModuleFileNameEx Error: %lu\n", GetLastError());
             }
             char *excutableName = basename(executablePath);
+            uint8_t len = (uint8_t) strlen(excutableName);
 
             // printf("strs: %llu, app: %s, vk: %lu, t: %lu\n", count++, excutableName, kbdStruct.vkCode, kbdStruct.time);
             fwrite(&kbdStruct.time, sizeof(DWORD), 1, f);
             fwrite(&kbdStruct.vkCode, sizeof(char), 1, f);
+            fwrite(&len, sizeof(uint8_t), 1, f);
             fwrite(excutableName, sizeof(char), strlen(excutableName), f);
+
+            count++;
+            if ((count % 256) == 0) {
+                printf("Flushing file...");
+                fflush(f);
+            }
         }
     }
 
@@ -67,7 +76,7 @@ void openNextFile() {
     strcat(cwd, filename);
     printf("Logging to: %s\n", cwd);
     f = fopen(cwd, "a");
-    setvbuf(f, NULL, _IOFBF, 4096 * 1);
+    setvbuf(f, NULL, _IOFBF, 4096 * 4);
     if (f == NULL) {
         MessageBox(NULL, "Failed to open logging file for writing!", "Error", MB_ICONERROR);
     }
