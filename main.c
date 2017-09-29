@@ -5,6 +5,7 @@
 #include <io.h>
 #include <stdint-gcc.h>
 #include <time.h>
+#include <tchar.h>
 
 unsigned long long count = 0;
 FILE *f;
@@ -27,22 +28,28 @@ LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
                 printf("[err] OpenProcess Error: %lu\n", GetLastError());
             }
 
-            TCHAR executablePath[256];
-            DWORD fail = GetModuleFileNameEx(process, NULL, executablePath, 256);
+            TCHAR executablePath[512];
+            DWORD fail = GetModuleFileNameEx(process, NULL, executablePath, 512);
             CloseHandle(process);
             if (fail == 0) {
                 printf("[err] GetModuleFileNameEx Error: %lu\n", GetLastError());
             }
-            char *excutableName = basename(executablePath);
-            uint8_t len = (uint8_t) strlen(excutableName);
+            TCHAR executableName[256];
+            TCHAR executableExtension[32];
+            _tsplitpath(executablePath, NULL, NULL, executableName, executableExtension);
+            strcat(executableName, executableExtension);
+
+            size_t size = _tcslen(executableName);
+            uint8_t len = (uint8_t) size;
+
             uint8_t vkCode = (uint8_t) kbdStruct.vkCode;
 
-            // printf("strs: %llu, app: %s, vk: %lu, t: %lu\n", count++, excutableName, kbdStruct.vkCode, kbdStruct.time);
+            // printf("strs: %llu, app: %s, vk: %lu, t: %lu\n", count++, executableName, kbdStruct.vkCode, kbdStruct.time);
             uint32_t timestamp = (unsigned) time(NULL);
             fwrite(&timestamp, sizeof(DWORD), 1, f);
             fwrite(&vkCode, sizeof(uint8_t), 1, f);
             fwrite(&len, sizeof(uint8_t), 1, f);
-            fwrite(excutableName, sizeof(char), strlen(excutableName), f);
+            fwrite(executableName, sizeof(char), len, f);
 
             count++;
             if ((count % 256) == 0) {
@@ -78,7 +85,7 @@ void openNextFile() {
     getcwd(cwd, sizeof(cwd));
     strcat(cwd, filename);
     printf("Logging to: %s\n", cwd);
-    f = fopen(cwd, "a");
+    f = fopen(cwd, "ab");
     setvbuf(f, NULL, _IOFBF, 4096 * 4);
     if (f == NULL) {
         MessageBox(NULL, "Failed to open logging file for writing!", "Error", MB_ICONERROR);
